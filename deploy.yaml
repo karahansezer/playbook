@@ -1,0 +1,99 @@
+---
+- hosts: localhost
+  gather_facts: False
+
+  tasks:
+    - name: Create deployment
+      k8s:
+        state: present
+        definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: sample-java
+          spec:
+            replicas: 4
+            selector:
+              matchLabels:
+                app: sample-java
+            template:
+              metadata:
+                labels:
+                  app: sample-java
+              spec:
+                affinity:
+                  podAntiAffinity:
+                    preferredDuringSchedulingIgnoredDuringExecution:
+                    - weight: 100
+                      podAffinityTerm:
+                        labelSelector:
+                          matchExpressions:
+                          - key: app
+                            operator: In
+                            values:
+                            - sample-java
+                        topologyKey: kubernetes.io/hostname
+                containers:
+                - name: sample-java
+                  image: karahansezer/sample-java
+                  ports:
+                  - containerPort: 9001
+                  livenessProbe:
+                    httpGet:
+                      path: /api/foos?val=
+                      port: 9001
+                    initialDelaySeconds: 60
+                    periodSeconds: 10
+                  readinessProbe:
+                    httpGet:
+                      path: /api/foos?val=
+                      port: 9001
+                    initialDelaySeconds: 30
+                    periodSeconds: 5
+                  startupProbe:
+                    httpGet:
+                      path: /api/foos?val=
+                      port: 9001
+                    failureThreshold: 30
+                    periodSeconds: 10
+                  lifecycle:
+                    preStop:
+                      exec:
+                        command: ["sh", "-c", "sleep 10"]
+                    
+    - name: Create service
+      k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: sample-java-service
+          spec:
+            selector:
+              app: sample-java
+            ports:
+            - protocol: TCP
+              port: 80
+              targetPort: 9001
+
+    - name: Create Ingress
+      k8s:
+        state: present
+        definition:
+          apiVersion: networking.k8s.io/v1
+          kind: Ingress
+          metadata:
+            name: sample-java-ingress
+          spec:
+            ingressClassName: nginx
+            rules:
+            - http:
+                paths:
+                - pathType: Prefix
+                  path: "/"
+                  backend:
+                    service:
+                      name: sample-java-service
+                      port:
+                        number: 80
