@@ -1,6 +1,7 @@
 ---
 - hosts: localhost
   gather_facts: False
+  connection: local
   tasks:
     - name: Create deployment
       k8s:
@@ -12,7 +13,7 @@
           kind: Deployment
           metadata:
             name: sample-java
-            namespace: default
+            namespace: default  # Add this line
           spec:
             replicas: 4
             selector:
@@ -28,28 +29,6 @@
                   image: karahansezer/sample-java
                   ports:
                   - containerPort: 9001
-                  livenessProbe:
-                    httpGet:
-                      path: /api/foos?val=
-                      port: 9001
-                    initialDelaySeconds: 60
-                    periodSeconds: 10
-                  readinessProbe:
-                    httpGet:
-                      path: /api/foos?val=
-                      port: 9001
-                    initialDelaySeconds: 30
-                    periodSeconds: 5
-                  startupProbe:
-                    httpGet:
-                      path: /api/foos?val=
-                      port: 9001
-                    failureThreshold: 30
-                    periodSeconds: 10
-                  lifecycle:
-                    preStop:
-                      exec:
-                        command: ["sh", "-c", "sleep 10"]
                 affinity:
                   podAntiAffinity:
                     preferredDuringSchedulingIgnoredDuringExecution:
@@ -73,7 +52,7 @@
           kind: Service
           metadata:
             name: sample-java-service
-            namespace: default
+            namespace: default  # Add this line
           spec:
             selector:
               app: sample-java
@@ -105,3 +84,4 @@
                       name: sample-java-service
                       port:
                         number: 80
+
