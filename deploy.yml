@@ -1,11 +1,13 @@
 ---
 - hosts: localhost
+  connection: local
   gather_facts: False
-
   tasks:
     - name: Create deployment
       k8s:
         state: present
+        kubeconfig: /home/karahan/.kube/config
+        context: default
         definition:
           apiVersion: apps/v1
           kind: Deployment
@@ -64,6 +66,8 @@
     - name: Create service
       k8s:
         state: present
+        kubeconfig: /home/karahan/.kube/config
+        context: default
         definition:
           apiVersion: v1
           kind: Service
@@ -80,6 +84,8 @@
     - name: Create Ingress
       k8s:
         state: present
+        kubeconfig: /home/karahan/.kube/config
+        context: default
         definition:
           apiVersion: networking.k8s.io/v1
           kind: Ingress
