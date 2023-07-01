@@ -29,6 +29,15 @@ spec:
             }
         }
 
+    stage('Install Kubernetes Python Module') {
+      steps {
+        container('ansible') {
+          sh '''
+          pip install kubernetes
+          '''
+        }
+      }
+    }
         stage('Run Ansible Playbook') {
             steps {
                 container('ansible') {
