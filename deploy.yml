@@ -1,7 +1,6 @@
 ---
 - hosts: localhost
   gather_facts: False
-  connection: local
   tasks:
     - name: Create deployment
       k8s:
@@ -13,7 +12,7 @@
           kind: Deployment
           metadata:
             name: sample-java
-            namespace: default  # Add this line
+            namespace: default
           spec:
             replicas: 4
             selector:
@@ -29,6 +28,28 @@
                   image: karahansezer/sample-java
                   ports:
                   - containerPort: 9001
+                  livenessProbe:
+                    httpGet:
+                      path: /api/foos?val=
+                      port: 9001
+                    initialDelaySeconds: 60
+                    periodSeconds: 10
+                  readinessProbe:
+                    httpGet:
+                      path: /api/foos?val=
+                      port: 9001
+                    initialDelaySeconds: 30
+                    periodSeconds: 5
+                  startupProbe:
+                    httpGet:
+                      path: /api/foos?val=
+                      port: 9001
+                    failureThreshold: 30
+                    periodSeconds: 10
+                  lifecycle:
+                    preStop:
+                      exec:
+                        command: ["sh", "-c", "sleep 10"]
                 affinity:
                   podAntiAffinity:
                     preferredDuringSchedulingIgnoredDuringExecution:
@@ -52,7 +73,7 @@
           kind: Service
           metadata:
             name: sample-java-service
-            namespace: default  # Add this line
+            namespace: default
           spec:
             selector:
               app: sample-java
@@ -71,13 +92,16 @@
           kind: Ingress
           metadata:
             name: sample-java-ingress
-            namespace: default  # Add this line
+            namespace: default
           spec:
+            ingressClassName: nginx
             rules:
             - http:
                 paths:
-                - path: "/"
-                  pathType: Prefix  # Added this line
+                - pathType: Prefix
+                  path: "/"
                   backend:
-                    serviceName: sample-java-service
-                    servicePort: 80
+                    service:
+                      name: sample-java-service
+                      port:
+                        number: 80
