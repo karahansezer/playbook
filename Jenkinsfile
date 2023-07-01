@@ -1,49 +1,36 @@
 pipeline {
-    agent {
-        kubernetes {
-            yaml """
+  agent {
+    kubernetes {
+      yaml '''
 apiVersion: v1
 kind: Pod
 metadata:
   labels:
     some-label: some-label-value
 spec:
+  serviceAccountName: jenkins-deployer
   containers:
   - name: ansible
     image: willhallonline/ansible:latest
     command:
     - cat
     tty: true
-  volumes:
-  - name: kubeconfig
-    hostPath:
-      path: /home/karahan/.kube/config
-  serviceAccount: jenkins-deployer
-"""
-        }
+  '''
     }
-    stages {
-        stage('Checkout') {
-            steps {
-                checkout scm
-            }
-        }
-
-    stage('Install Kubernetes Python Module') {
+  }
+  stages {
+    stage('Checkout') {
+      steps {
+        checkout scm
+      }
+    }
+    stage('Deploy to Kubernetes') {
       steps {
         container('ansible') {
-          sh '''
-          pip install kubernetes
-          '''
+          sh 'pip install kubernetes'
+          sh 'ansible-playbook deploy.yml'
         }
       }
     }
-        stage('Run Ansible Playbook') {
-            steps {
-                container('ansible') {
-                    sh 'ansible-playbook -i localhost, -c local deploy.yml'
-                }
-            }
-        }
-    }
+  }
 }
