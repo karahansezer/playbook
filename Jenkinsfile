@@ -1,7 +1,7 @@
 pipeline {
-    agent {
-        kubernetes {
-            yaml '''
+  agent {
+    kubernetes {
+      yaml """
 apiVersion: v1
 kind: Pod
 spec:
@@ -11,23 +11,32 @@ spec:
     command:
     - cat
     tty: true
-'''
-        }
+  """
+    }
+  }
+  stages {
+    stage('Checkout') {
+      steps {
+        checkout scm
+      }
     }
 
-    stages {
-        stage('Checkout') {
-            steps {
-                checkout scm
-            }
+    stage('Install Kubernetes Python Module') {
+      steps {
+        container('ansible') {
+          sh '''
+          pip install kubernetes
+          '''
         }
-
-        stage('Run Ansible Playbook') {
-            steps {
-                container('ansible') {
-                    sh 'ansible-playbook deploy.yml'
-                }
-            }
-        }
+      }
     }
+
+    stage('Run Ansible Playbook') {
+      steps {
+        container('ansible') {
+          sh 'ansible-playbook deploy.yml'
+        }
+      }
+    }
+  }
 }
