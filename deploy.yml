@@ -1,124 +1,129 @@
 ---
-- name: Deploy the sample-java application on Kubernetes
-  hosts: localhost
-  gather_facts: no
+- hosts: localhost
+  gather_facts: False
+  connection: local
   tasks:
-  - name: Install the sample-java Deployment
-    community.kubernetes.k8s:
-      kubeconfig: /path/to/kubeconfig/file
-      state: present
-      definition:
-        apiVersion: apps/v1
-        kind: Deployment
-        metadata:
-          name: sample-java
-        spec:
-          replicas: 4
-          selector:
-            matchLabels:
-              app: sample-java
-          template:
-            metadata:
-              labels:
+    - name: Create deployment
+      k8s:
+        state: present
+        host: https://kubernetes.default.svc.cluster.local
+        validate_certs: no
+        definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: sample-java
+          spec:
+            replicas: 4
+            selector:
+              matchLabels:
                 app: sample-java
-            spec:
-              affinity:
-                podAntiAffinity:
-                  preferredDuringSchedulingIgnoredDuringExecution:
-                  - weight: 100
-                    podAffinityTerm:
-                      labelSelector:
-                        matchExpressions:
-                        - key: app
-                          operator: In
-                          values:
-                          - sample-java
-                      topologyKey: kubernetes.io/hostname
-              containers:
-              - name: sample-java
-                image: karahansezer/sample-java
-                ports:
-                - containerPort: 9001
-                livenessProbe:
-                  httpGet:
-                    path: /api/foos?val=
-                    port: 9001
-                  initialDelaySeconds: 60
-                  periodSeconds: 10
-                readinessProbe:
-                  httpGet:
-                    path: /api/foos?val=
-                    port: 9001
-                  initialDelaySeconds: 30
-                  periodSeconds: 5
-                startupProbe:
-                  httpGet:
-                    path: /api/foos?val=
-                    port: 9001
-                  failureThreshold: 30
-                  periodSeconds: 10
-                lifecycle:
-                  preStop:
-                    exec:
-                      command: ["sh", "-c", "sleep 10"]
-                resources:  
-                  requests:  
-                    cpu: "100m"
-                    memory: "128Mi"
-                volumeMounts:
-                - name: log-storage
-                  mountPath: /app/logs
-              - name: filebeat
-                image: docker.elastic.co/beats/filebeat-oss:7.6.2
-                command: ["filebeat", "-c", "/etc/filebeat/filebeat.yml"]
-                volumeMounts:
+            template:
+              metadata:
+                labels:
+                  app: sample-java
+              spec:
+                affinity:
+                  podAntiAffinity:
+                    preferredDuringSchedulingIgnoredDuringExecution:
+                    - weight: 100
+                      podAffinityTerm:
+                        labelSelector:
+                          matchExpressions:
+                          - key: app
+                            operator: In
+                            values:
+                            - sample-java
+                        topologyKey: kubernetes.io/hostname
+                containers:
+                - name: sample-java
+                  image: karahansezer/sample-java
+                  ports:
+                  - containerPort: 9001
+                  livenessProbe:
+                    httpGet:
+                      path: /api/foos?val=
+                      port: 9001
+                    initialDelaySeconds: 60
+                    periodSeconds: 10
+                  readinessProbe:
+                    httpGet:
+                      path: /api/foos?val=
+                      port: 9001
+                    initialDelaySeconds: 30
+                    periodSeconds: 5
+                  startupProbe:
+                    httpGet:
+                      path: /api/foos?val=
+                      port: 9001
+                    failureThreshold: 30
+                    periodSeconds: 10
+                  lifecycle:
+                    preStop:
+                      exec:
+                        command: ["sh", "-c", "sleep 10"]
+                  resources:  
+                    requests:  
+                      cpu: "100m"
+                      memory: "128Mi"
+                  volumeMounts:
+                  - name: log-storage
+                    mountPath: /app/logs
+                - name: filebeat
+                  image: docker.elastic.co/beats/filebeat-oss:7.6.2
+                  command: ["filebeat", "-c", "/etc/filebeat/filebeat.yml"]
+                  volumeMounts:
+                  - name: filebeat-config
+                    mountPath: /etc/filebeat/filebeat.yml
+                    subPath: filebeat.yml
+                  - name: log-storage
+                    mountPath: /app/logs
+                volumes:
                 - name: filebeat-config
-                  mountPath: /etc/filebeat/filebeat.yml
-                  subPath: filebeat.yml
+                  configMap:
+                    name: filebeat-config  # ConfigMap containing filebeat.yml
                 - name: log-storage
-                  mountPath: /app/logs
-              volumes:
-              - name: filebeat-config
-                configMap:
-                  name: filebeat-config
-              - name: log-storage
-                emptyDir: {}
+                  emptyDir: {}
 
-  - name: Install the sample-java Service
-    community.kubernetes.k8s:
-      kubeconfig: /path/to/kubeconfig/file
-      state: present
-      definition:
-        apiVersion: v1
-        kind: Service
-        metadata:
-          name: sample-java-service
-        spec:
-          selector:
-            app: sample-java
-          ports:
+    - name: Create service
+      k8s:
+        state: present
+        host: https://kubernetes.default.svc.cluster.local
+        validate_certs: no
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: sample-java-service
+            namespace: default  # Add this line
+          spec:
+            selector:
+              app: sample-java
+            ports:
             - protocol: TCP
               port: 80
               targetPort: 9001
 
-  - name: Install the sample-java Ingress
-    community.kubernetes.k8s:
-      kubeconfig: /path/to/kubeconfig/file
-      state: present
-      definition:
-        apiVersion: networking.k8s.io/v1
-        kind: Ingress
-        metadata:
-          name: sample-java-ingress
-        spec:
-          ingressClassName: nginx
-          rules:
-          - http:
-              paths:
-              - pathType: Prefix
-                path: "/"
-                backend:
-                  service:
-                    name: sample-java-service
-                    port:
-                      number: 80
+    - name: Create Ingress
+      k8s:
+        state: present
+        host: https://kubernetes.default.svc.cluster.local
+        validate_certs: no
+        definition:
+          apiVersion: networking.k8s.io/v1
+          kind: Ingress
+          metadata:
+            name: sample-java-ingress
+            namespace: default
+          spec:
+            ingressClassName: nginx
+            rules:
+            - http:
+                paths:
+                - pathType: Prefix
+                  path: "/"
+                  backend:
+                    service:
+                      name: sample-java-service
+                      port:
+                        number: 80
