@@ -13,6 +13,7 @@
           kind: Deployment
           metadata:
             name: sample-java
+            namespace: default
           spec:
             replicas: 4
             selector:
