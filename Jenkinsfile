@@ -28,6 +28,7 @@ spec:
       steps {
         container('ansible') {
           sh 'pip install kubernetes'
+          sh 'ansible-galaxy collection install community.kubernetes'
           sh 'ansible-playbook deploy.yml'
         }
       }
